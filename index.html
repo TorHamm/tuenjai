@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>เตือนใจ</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+      body { font-family: system-ui, sans-serif; padding: 16px; }
+      .chip { display:inline-block; padding:10px 12px; border:1px solid #ddd; border-radius:999px; margin:6px 6px 0 0; cursor:pointer; }
+      .chip.active { border-color:#111; font-weight:600; }
+      button { padding:12px 14px; border-radius:10px; border:0; background:#111; color:#fff; width:100%; margin-top:14px; }
+      input { width:100%; padding:12px; border-radius:10px; border:1px solid #ddd; margin-top:12px; }
+      .muted { color:#666; font-size:14px; }
+    </style>
+  </head>
+  <body>
+    <h2 id="title">กำลังโหลด...</h2>
+    <div id="app"></div>
+
+    <script>
+      const LIFF_ID = "https://liff.line.me/2009019120-2LfYAK9n";
+      const API_BASE = "https://tuenjai-bot.tor-newacc.workers.dev"; // e.g. your worker domain
+
+      const defaultCats = ["เรียน","งาน","สุขภาพ","ครอบครัว","การเงิน","อื่นๆ"];
+      let selected = new Set(defaultCats.slice(0,3)); // preselect 3
+
+      function renderOnboarding(name) {
+        document.getElementById("title").textContent = `สวัสดี ${name || ""}`.trim();
+        const app = document.getElementById("app");
+        app.innerHTML = `
+          <p class="muted">เลือกประเภทเตือนใจ 3–7 อัน (แก้ทีหลังได้)</p>
+          <div id="chips"></div>
+          <input id="custom" placeholder="เพิ่มหมวดเอง เช่น ฟิตเนส / สอบ" />
+          <button id="save">บันทึกหมวดหมู่</button>
+        `;
+
+        const chips = document.getElementById("chips");
+        function draw() {
+          chips.innerHTML = "";
+          defaultCats.forEach(c => {
+            const el = document.createElement("div");
+            el.className = "chip" + (selected.has(c) ? " active" : "");
+            el.textContent = c;
+            el.onclick = () => {
+              if (selected.has(c)) selected.delete(c);
+              else {
+                if (selected.size >= 7) return alert("เลือกได้สูงสุด 7 หมวด");
+                selected.add(c);
+              }
+              draw();
+            };
+            chips.appendChild(el);
+          });
+        }
+        draw();
+
+        document.getElementById("save").onclick = async () => {
+          const custom = document.getElementById("custom").value.trim();
+          if (custom) {
+            if (selected.size >= 7) return alert("เลือกได้สูงสุด 7 หมวด");
+            selected.add(custom);
+          }
+          if (selected.size < 3) return alert("เลือกอย่างน้อย 3 หมวด");
+
+          const res = await fetch(`${API_BASE}/categories/init`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ categories: Array.from(selected) })
+          });
+
+          if (!res.ok) return alert("บันทึกไม่สำเร็จ ลองใหม่");
+          location.href = "/overview.html"; // or render overview
+        };
+      }
+
+      async function main() {
+        await liff.init({ liffId: LIFF_ID });
+
+        if (!liff.isLoggedIn()) {
+          liff.login(); // redirects back automatically
+          return;
+        }
+
+        const idToken = liff.getIDToken();
+        if (!idToken) {
+          document.getElementById("title").textContent = "ไม่พบ ID Token";
+          return;
+        }
+
+        // Auth with your server (sets cookie session)
+        const authRes = await fetch(`${API_BASE}/auth/liff`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ idToken })
+        });
+
+        if (!authRes.ok) {
+          document.getElementById("title").textContent = "ล็อกอินไม่สำเร็จ";
+          return;
+        }
+
+        // Fetch "me" to see if onboarding needed
+        const meRes = await fetch(`${API_BASE}/me`, { credentials: "include" });
+        const me = await meRes.json();
+
+        if (!me.hasCategories) {
+          renderOnboarding(me.displayName);
+        } else {
+          location.href = "/overview.html";
+        }
+      }
+
+      main().catch(err => {
+        document.getElementById("title").textContent = "เกิดข้อผิดพลาด";
+        console.error(err);
+      });
+    </script>
+  </body>
+</html>
