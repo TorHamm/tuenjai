@@ -19,104 +19,120 @@
     <div id="app"></div>
 
     <script>
-      const LIFF_ID = "https://liff.line.me/2009019120-2LfYAK9n";
-      const API_BASE = "https://tuenjai-bot.tor-newacc.workers.dev"; // e.g. your worker domain
+        const LIFF_ID = "2009019120-2LfYAK9n"; // ✅ LIFF ID only
+        const API_BASE = "https://tuenjai-bot.tor-newacc.workers.dev";
 
-      const defaultCats = ["เรียน","งาน","สุขภาพ","ครอบครัว","การเงิน","อื่นๆ"];
-      let selected = new Set(defaultCats.slice(0,3)); // preselect 3
+        const defaultCats = ["เรียน","งาน","สุขภาพ","ครอบครัว","การเงิน","อื่นๆ"];
+        let selected = new Set(defaultCats.slice(0,3));
 
-      function renderOnboarding(name) {
-        document.getElementById("title").textContent = `สวัสดี ${name || ""}`.trim();
-        const app = document.getElementById("app");
-        app.innerHTML = `
-          <p class="muted">เลือกประเภทเตือนใจ 3–7 อัน (แก้ทีหลังได้)</p>
-          <div id="chips"></div>
-          <input id="custom" placeholder="เพิ่มหมวดเอง เช่น ฟิตเนส / สอบ" />
-          <button id="save">บันทึกหมวดหมู่</button>
-        `;
+        function renderOnboarding(name) {
+            document.getElementById("title").textContent = `สวัสดี ${name || ""}`.trim();
+            const app = document.getElementById("app");
+            app.innerHTML = `
+            <p class="muted">เลือกประเภทเตือนใจ 3–7 อัน (แก้ทีหลังได้)</p>
+            <div id="chips"></div>
+            <input id="custom" placeholder="เพิ่มหมวดเอง เช่น ฟิตเนส / สอบ" />
+            <button id="save">บันทึกหมวดหมู่</button>
+            `;
 
-        const chips = document.getElementById("chips");
-        function draw() {
-          chips.innerHTML = "";
-          defaultCats.forEach(c => {
-            const el = document.createElement("div");
-            el.className = "chip" + (selected.has(c) ? " active" : "");
-            el.textContent = c;
-            el.onclick = () => {
-              if (selected.has(c)) selected.delete(c);
-              else {
+            const chips = document.getElementById("chips");
+            function draw() {
+            chips.innerHTML = "";
+            defaultCats.forEach(c => {
+                const el = document.createElement("div");
+                el.className = "chip" + (selected.has(c) ? " active" : "");
+                el.textContent = c;
+                el.onclick = () => {
+                if (selected.has(c)) selected.delete(c);
+                else {
+                    if (selected.size >= 7) return alert("เลือกได้สูงสุด 7 หมวด");
+                    selected.add(c);
+                }
+                draw();
+                };
+                chips.appendChild(el);
+            });
+            }
+            draw();
+
+            document.getElementById("save").onclick = async () => {
+            const custom = document.getElementById("custom").value.trim();
+            if (custom) {
                 if (selected.size >= 7) return alert("เลือกได้สูงสุด 7 หมวด");
-                selected.add(c);
-              }
-              draw();
+                selected.add(custom);
+            }
+            if (selected.size < 3) return alert("เลือกอย่างน้อย 3 หมวด");
+
+            const res = await fetch(`${API_BASE}/categories/init`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ categories: Array.from(selected) })
+            });
+
+            if (!res.ok) return alert("บันทึกไม่สำเร็จ ลองใหม่");
+
+            document.getElementById("title").textContent = "เรียบร้อย ✅";
+            document.getElementById("app").innerHTML = `
+                <p>บันทึกหมวดหมู่เรียบร้อยแล้ว</p>
+                <p class="muted">กลับไปที่แชท แล้วลองพิมพ์ “สรุปวันนี้”</p>
+            `;
             };
-            chips.appendChild(el);
-          });
         }
-        draw();
 
-        document.getElementById("save").onclick = async () => {
-          const custom = document.getElementById("custom").value.trim();
-          if (custom) {
-            if (selected.size >= 7) return alert("เลือกได้สูงสุด 7 หมวด");
-            selected.add(custom);
-          }
-          if (selected.size < 3) return alert("เลือกอย่างน้อย 3 หมวด");
+        async function main() {
+            await liff.init({ liffId: LIFF_ID });
 
-          const res = await fetch(`${API_BASE}/categories/init`, {
+            if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
+            }
+
+            const idToken = liff.getIDToken();
+            if (!idToken) {
+            document.getElementById("title").textContent = "ไม่พบ ID Token";
+            return;
+            }
+
+            const authRes = await fetch(`${API_BASE}/auth/liff`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ categories: Array.from(selected) })
-          });
+            body: JSON.stringify({ idToken })
+            });
 
-          if (!res.ok) return alert("บันทึกไม่สำเร็จ ลองใหม่");
-          location.href = "/overview.html"; // or render overview
-        };
-      }
+            if (!authRes.ok) {
+            document.getElementById("title").textContent = "ล็อกอินไม่สำเร็จ";
+            return;
+            }
 
-      async function main() {
-        await liff.init({ liffId: LIFF_ID });
+            const meRes = await fetch(`${API_BASE}/me`, { credentials: "include" });
+            if (!meRes.ok) {
+            document.getElementById("title").textContent = "ดึงข้อมูลผู้ใช้ไม่สำเร็จ";
+            return;
+            }
 
-        if (!liff.isLoggedIn()) {
-          liff.login(); // redirects back automatically
-          return;
+            const me = await meRes.json();
+            if (!me.ok) {
+            document.getElementById("title").textContent = "Session ไม่ถูกต้อง ลองเปิดใหม่";
+            return;
+            }
+
+            if (!me.hasCategories) {
+            renderOnboarding(me.displayName);
+            } else {
+            document.getElementById("title").textContent = "พร้อมใช้งาน ✅";
+            document.getElementById("app").innerHTML = `
+                <p class="muted">คุณตั้งค่าหมวดหมู่ไว้แล้ว</p>
+                <p>ลองพิมพ์ “สรุปวันนี้” ในแชทได้เลย</p>
+            `;
+            }
         }
 
-        const idToken = liff.getIDToken();
-        if (!idToken) {
-          document.getElementById("title").textContent = "ไม่พบ ID Token";
-          return;
-        }
-
-        // Auth with your server (sets cookie session)
-        const authRes = await fetch(`${API_BASE}/auth/liff`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ idToken })
+        main().catch(err => {
+            document.getElementById("title").textContent = "เกิดข้อผิดพลาด";
+            console.error(err);
         });
-
-        if (!authRes.ok) {
-          document.getElementById("title").textContent = "ล็อกอินไม่สำเร็จ";
-          return;
-        }
-
-        // Fetch "me" to see if onboarding needed
-        const meRes = await fetch(`${API_BASE}/me`, { credentials: "include" });
-        const me = await meRes.json();
-
-        if (!me.hasCategories) {
-          renderOnboarding(me.displayName);
-        } else {
-          location.href = "/overview.html";
-        }
-      }
-
-      main().catch(err => {
-        document.getElementById("title").textContent = "เกิดข้อผิดพลาด";
-        console.error(err);
-      });
     </script>
   </body>
 </html>
