@@ -107,9 +107,13 @@
             });
 
             if (!authRes.ok) {
-            document.getElementById("title").textContent = "ล็อกอินไม่สำเร็จ";
+            const detail = await authRes.text();
+            document.getElementById("title").textContent = `auth failed (${authRes.status})`;
+            document.getElementById("app").innerHTML = `<pre>${detail}</pre>`;
+            console.log("AUTH FAIL DETAIL:", detail);
             return;
             }
+
 
             const meRes = await fetch(`${API_BASE}/me`, { credentials: "include" });
             if (!meRes.ok) {
