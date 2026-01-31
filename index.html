@@ -106,13 +106,17 @@
             body: JSON.stringify({ idToken })
             });
 
+            console.log("auth status", authRes.status);
+            console.log("auth headers", Array.from(authRes.headers.entries()));
+            const authText = await authRes.text();
+            console.log("auth body", authText);
+            
             if (!authRes.ok) {
-            const detail = await authRes.text();
-            document.getElementById("title").textContent = `auth failed (${authRes.status})`;
-            document.getElementById("app").innerHTML = `<pre>${detail}</pre>`;
-            console.log("AUTH FAIL DETAIL:", detail);
+            document.getElementById("title").textContent = `ล็อกอินไม่สำเร็จ (${authRes.status})`;
+            document.getElementById("app").innerHTML = `<pre>${authText}</pre>`;
             return;
             }
+
 
 
             const meRes = await fetch(`${API_BASE}/me`, { credentials: "include" });
