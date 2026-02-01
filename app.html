@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>เตือนใจ</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">เตือนใจ</div>
+    <button id="refreshBtn" class="ghost">รีเฟรช</button>
+  </header>
+
+  <main>
+    <section class="page" data-page="overview">
+      <h2>ภาพรวม</h2>
+      <div class="card">
+        <div class="cardTitle">วันนี้</div>
+        <div id="todayList" class="list muted">กำลังโหลด…</div>
+      </div>
+      <div class="card">
+        <div class="cardTitle">ถัดไป 7 วัน</div>
+        <div id="upcomingList" class="list muted">กำลังโหลด…</div>
+      </div>
+      <a id="openLineBtn" class="btn" href="#">เปิดแชท LINE</a>
+    </section>
+
+    <section class="page hidden" data-page="reminders">
+      <h2>All event</h2>
+      <div class="filters">
+        <button class="chip active" data-range="week">สัปดาห์นี้</button>
+        <button class="chip" data-range="month">เดือนนี้</button>
+      </div>
+      <div id="reminderList" class="list muted">กำลังโหลด…</div>
+    </section>
+
+    <section class="page hidden" data-page="tasks">
+      <h2>All task</h2>
+      <div class="filters">
+        <button class="chip active" data-status="scheduled">ยังไม่เสร็จ</button>
+        <button class="chip" data-status="done">เสร็จแล้ว</button>
+      </div>
+      <div id="taskList" class="list muted">กำลังโหลด…</div>
+    </section>
+
+    <section class="page hidden" data-page="settings">
+      <h2>Setting</h2>
+      <div class="card">
+        <button id="signOutBtn" class="btn danger">ออกจากระบบ</button>
+      </div>
+      <div class="muted small" id="debug"></div>
+    </section>
+  </main>
+
+  <nav class="bottomNav">
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="reminders">All event</button>
+    <button class="tab" data-tab="tasks">All task</button>
+    <button class="tab" data-tab="settings">Setting</button>
+  </nav>
+
+  <script src="./app.js"></script>
+</body>
+</html>
