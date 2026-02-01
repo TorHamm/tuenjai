@@ -99,33 +99,36 @@
             return;
             }
 
+            // Auth with your server (returns sessionToken)
             const authRes = await fetch(`${API_BASE}/auth/liff`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            credentials: "include",
             body: JSON.stringify({ idToken })
             });
 
-            console.log("auth status", authRes.status);
-            console.log("auth headers", Array.from(authRes.headers.entries()));
             const authText = await authRes.text();
-            console.log("auth body", authText);
-            
             if (!authRes.ok) {
             document.getElementById("title").textContent = `ล็อกอินไม่สำเร็จ (${authRes.status})`;
             document.getElementById("app").innerHTML = `<pre>${authText}</pre>`;
             return;
             }
 
+            const auth = JSON.parse(authText);
+            localStorage.setItem("sessionToken", auth.sessionToken);
 
+            // Fetch "me" using Bearer token
+            const token = localStorage.getItem("sessionToken");
+            const meRes = await fetch(`${API_BASE}/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+            });
 
-            const meRes = await fetch(`${API_BASE}/me`, { credentials: "include" });
             if (!meRes.ok) {
-            document.getElementById("title").textContent = "ดึงข้อมูลผู้ใช้ไม่สำเร็จ";
+            document.getElementById("title").textContent = "ดึงข้อมูลผู้ใช้ ไม่สำเร็จ";
             return;
             }
 
             const me = await meRes.json();
+
             if (!me.ok) {
             document.getElementById("title").textContent = "Session ไม่ถูกต้อง ลองเปิดใหม่";
             return;
